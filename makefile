@@ -1,6 +1,6 @@
-#  "productKey": "a1lzEibT7GB",
-#  "deviceName": "uebZRgkXXWI0uJhzghix",
-#  "deviceSecret": "qd3VaPSws2MRBuVZCElQorUAHO452v6p",
+#  "productKey": "111111111",
+#  "deviceName": "2222222222",
+#  "deviceSecret": "33333333333",
 #  "region": "cn-shanghai"
 CC       = g++
 LD       = ld
@@ -18,9 +18,9 @@ LIBPATH = -L ./lib -L ./
 
 vpath %.c ./
 
-PK = a1lzEibT7GB
-DN = uebZRgkXXWI0uJhzghix
-DS = qd3VaPSws2MRBuVZCElQorUAHO452v6p
+PK = 111111
+DN = 2222222222
+DS = 3333333333
 DOMAIN = iot-as-mqtt.cn-shanghai.aliyuncs.com
 DID = -DDEVICE_NAME=\"${DN}\" \
 	  -DPRODUCT_KEY=\"${PK}\" \
