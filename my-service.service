@@ -1,0 +1,14 @@
+[Unit]
+Description=My Neato Serice
+#After=network.target
+
+[Service]
+Type=forking
+User=root
+Group=root
+Environment="HOME=/home/root"
+WorkingDirectory=/home/root
+ExecStart=/home/root/startwifi.sh
+
+[Install]
+WantedBy=multi-user.target
