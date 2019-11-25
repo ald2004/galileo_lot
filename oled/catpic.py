@@ -21,12 +21,17 @@ x = padding
 image = Image.new('1', (width, height))
 gay=image
 draw = ImageDraw.Draw(gay)
-font=ImageFont.truetype('minecraftia/Minecraftia-Regular.ttf', 18)
+font=ImageFont.truetype('minecraftia/Minecraftia-Regular.ttf', 26)
 font2=ImageFont.truetype('minecraftia/Minecraftia-Regular.ttf', 14)
-draw.text((x, top),    'CH4          16Nm3',  font=font2, fill=255)
+font3=ImageFont.truetype('minecraftia/Minecraftia-Regular.ttf', 10)
+draw.text((x, top),'CH4          16Nm3',  font=font2, fill=255)
+top+=14
+draw.text((x, top),'CH2O',  font=font2, fill=255)
+top+=14
+draw.text((x+8, top),'     0.05',  font=font, fill=255)
 top+=20
-draw.text((x, top),    'CH2O',  font=font2, fill=255)
-draw.text((x+20, top+20),    '     0.05ppm',  font=font, fill=255)
+draw.text((x+107, top),'ppm',  font=font3, fill=255)
+
 # Display image.
 disp.image(gay)
 disp.display()
