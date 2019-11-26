@@ -1,6 +1,7 @@
 /* standard headers */
 #include <iostream>
 #include <signal.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,6 +9,7 @@
 /* mraa headers */
 #include "mraa/aio.hpp"
 #include "mraa/common.hpp"
+#include "mraa/uart.hpp"
 /*aliyun iot*/
 #include "iot_import.h"
 #include "iot_export.h"
@@ -26,6 +28,7 @@
 
 /* AIO port */
 #define AIO_PORT 0
+const char* dev_path = "/dev/ttyUSB0";
 /* the sample will auto terminate if execution time expired */
 #define SAMPLE_EXECUTION_TIME           20
 /* this parameter is deprecated in this version, just set to 16 */
@@ -94,7 +97,18 @@ void sig_handler(int signum)
 		flag = 0;
 	}
 }
-
+unsigned char FucCheckSum(unsigned char* i, unsigned char ln)
+{
+	unsigned char j, tempq = 0;
+	i += 1;
+	for (j = 0; j < (ln - 2); j++)
+	{
+		tempq += *i;
+		i++;
+	}
+	tempq = (~tempq) + 1;
+	return(tempq);
+}
 /*
  * the handler of service which is defined by identifier, not property
  * alink method: thing.service.{tsl.service.identifier}
@@ -212,6 +226,37 @@ static void app_print_banner(void)
 	HAL_Printf("\n");
 }
 
+std::string read_all_data(mraa::Uart* uart) {
+	usleep(2000);
+	char buffer[19];
+	//vector<vector<char>> xx;
+	//cout << "u->dataAvailable() is :[" << uart->dataAvailable(1000) << "]" << endl;
+	//while (uart->dataAvailable(1000)) {
+	char data[9];
+	if (uart->dataAvailable(1000)) {
+		for (int i = 0; i < 9; i++) {
+			int ret = uart->read(&data[i], 1);
+			assert(ret == 1);
+		}
+		if (FucCheckSum((unsigned char*)data, 9) == (unsigned char)data[8]) {
+			buffer[18] = 0;
+			for (int i = 0; i < 9; i++)
+				sprintf(&buffer[i * 2], "%02X", (int)(*(unsigned char*)(&data[i])));
+		}
+
+	}
+	uart->flush();
+	for (int i = 0; i < 100; i++) {
+		uart->read(data, 9);
+		for (int j = 0; j < 9; j++)data[j] = 0;
+	}
+	uart->flush();
+	//std::cout << buffer << std::endl;
+	std::string s = buffer;
+	return s;
+	//}
+}
+
 int main(void)
 {
 	//uint16_t value;
@@ -221,7 +266,14 @@ int main(void)
 	//! [Interesting]
 	/* initialize AIO */
 	mraa::Aio aio(AIO_PORT);
-
+	mraa::Uart* uart;
+	try {
+		uart = new mraa::Uart(dev_path);
+	}
+	catch (std::exception & e) {
+		std::cerr << "Error while setting up raw UART, do you have a uart?" << std::endl;
+		std::terminate();
+	}
 	app_print_banner();
 	IOT_SetLogLevel(IOT_LOG_ERROR);
 	APP_TRACE("sample start!\n");
@@ -270,14 +322,26 @@ int main(void)
 	}
 	APP_TRACE("IOT_Linkkit_Connect successfully");
 	APP_TRACE("Linkkit enter loop");
+
+	if (uart->setBaudRate(9600) != mraa::SUCCESS) {
+		std::cerr << "Error setting parity on UART" << std::endl;
+	}
+
+	if (uart->setMode(8, mraa::UART_PARITY_NONE, 1) != mraa::SUCCESS) {
+		std::cerr << "Error setting parity on UART" << std::endl;
+	}
+
+	if (uart->setFlowcontrol(false, false) != mraa::SUCCESS) {
+		std::cerr << "Error setting flow control UART" << std::endl;
+	}
+
+
 	while (flag) {
 		//value = aio.read();
 		float float_value;
 		float_value = aio.readFloat();
 		/*sprintf(formatted, "%X - %d", value, value);
 		std::cout << "ADC A0 read " << formatted << std::endl;*/
-		char formatted[256]; //Caution with the length, there is risk of a buffer overflow
-		sprintf(formatted, "%.5f", float_value);
 		//std::cout << "ADC A0 read float - " << formatted << std::endl;
 
 		//SLEEP(USER_EXAMPLE_YIELD_TIMEOUT_MS);
@@ -288,7 +352,22 @@ int main(void)
 			continue;
 		}
 
+		/*FF    17   04       00        00          00          07     D0       0E
+			    名称 单位ppb  小数位数   气体浓度hi   气体浓度low  满量hi 满量low  校验
+			气体浓度值 = 气体浓度高位 * 256 + 气体浓度低位;
+			100 ppb = 0.1 ppm = 0.12 mg/m3.   =>x*0.0012
+			*/
+		std::string form_data = read_all_data(uart);
+		std::string gas_con_hi = form_data.substr(8, 2), gas_con_low = form_data.substr(10, 2);
+		unsigned int int_hi = 0, int_low = 0; double fin_result = 0;
+		std::stringstream ss_hi, ss_low;
+		ss_hi << std::hex << gas_con_hi; ss_low << std::hex << gas_con_low;
+		ss_hi >> int_hi; ss_low >> int_low;
+		fin_result = ((float)int_hi * 256 + (float)int_low) * 0.0012;
+		//std::cout << "final is :[" << fin_result << "]" << std::endl;
 		/* post all properties every 5 second */
+		char formatted[256]; //Caution with the length, there is risk of a buffer overflow
+		sprintf(formatted, "CH4:%.5f|CH2O:%2.4f ppm", float_value);
 		if (float_value > 0.3 || (now % 5 == 0)) {
 			app_post_all_property(formatted);
 		}
@@ -347,6 +426,14 @@ ADC A0 read float - 0.00000
 ADC A0 read 0 - 0
 ADC A0 read float - 0.00000
 ^CExiting...
+user_report_reply_event_handler|144 :: Property Post Reply Received, Devid: 0, Message ID: 93, Code: 200, Reply: {}
 
+user_report_reply_event_handler|144 :: Property Post Reply Received, Devid: 0, Message ID: 94, Code: 200, Reply: {}
+
+user_report_reply_event_handler|144 :: Property Post Reply Received, Devid: 0, Message ID: 95, Code: 200, Reply: {}
+
+user_report_reply_event_handler|144 :: Property Post Reply Received, Devid: 0, Message ID: 96, Code: 200, Reply: {}
+
+user_report_reply_event_handler|144 :: Property Post Reply Received, Devid: 0, Message ID: 97, Code: 200, Reply: {}
 */
 
