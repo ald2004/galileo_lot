@@ -1,5 +1,5 @@
 # galileo_lot
-![image](https://github.com/ald2004/galileo_lot/blob/master/get_data_2019-12-01.png)
+![image](https://github.com/ald2004/galileo_lot/blob/master/get_data_2019-12-04.png)
 ![image](https://github.com/ald2004/galileo_lot/blob/master/1.jpg)
 ![image](https://github.com/ald2004/galileo_lot/blob/master/2.jpg)
 ![image](https://github.com/ald2004/galileo_lot/blob/master/3.jpg)
