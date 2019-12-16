@@ -65,6 +65,12 @@ if __name__ == '__main__':
     ax.set_xlabel('time')
     ax.set_ylabel('mg/m^3')
     ax.set_title('formaldehyde')
+    try:
+        maxdata=float(maxdata)
+        if maxdata>0.08:
+            plt.axhline(y=0.08, ls="-", c="red")  # draw a Horizontal GB 0.08 line.
+    except:
+        pass                                                         
     # plt.show()
     plt.savefig(f'{savedir}get_data_{truetime}.png')
     image = Image.open(f'{savedir}get_data_{truetime}.png')
